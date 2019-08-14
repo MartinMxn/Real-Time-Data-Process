@@ -4,10 +4,14 @@
 # 指定一个股票 每秒抓取一次股票信息
 from kafka import KafkaProducer
 from googlefinance import getQuotes
+from kafka.errors import KafkaError, KafkaTimeoutError
+
 import argparse
 import json
 import time
 import logging
+import schedule  # better than set time
+import atexit  # shut down hook, like runTimeExit in Java and process.exit in Node
 
 # default kafka setting
 topic_name = 'stock-analyzer'
@@ -16,6 +20,8 @@ kafka_broker = '127.0.0.1:9002'
 logger_format = '%(asctime)-15s %(message)s'
 logging.basicConfig(format=logger_format)
 logger = logging.getLogger('data-producer')
+
+# mode: TRACE, DEBUG, INFO, WARNING
 logger.setLevel(logging.DEBUG)
 
 
@@ -27,10 +33,31 @@ def fetch_price(producer, symbol):
     :return: None
     """
     logger.debug('Start to fetch stock price for %s', symbol)
-    price = json.dumps(getQuotes(symbol))  # to py dict
-    logger.debug('Get stock info %s', price)
-    producer.send(topic = topic_name, value=price, timestamp_ms=time.time)
-    logger.debug('Sent stock price for %s to kafka', symbol)
+    try:
+        price = json.dumps(getQuotes(symbol))  # to py dict
+        logger.debug('Get stock info %s', price)
+        producer.send(topic = topic_name, value=price, timestamp_ms=time.time)
+        logger.debug('Sent stock price for %s to kafka', symbol)
+    except KafkaTimeoutError as timeout_error:
+        logger.warning('Failed to send stock price for %s to kafka, cauase by %s',(symbol, timeout_error))
+    except Exception:
+        logger.warning('Failed to get stock price for %s', symbol)
+
+
+def shutdown_hook(producer):
+    try:
+        producer.flush(10)  # some message may still not send, give 10s to send
+        producer.close()
+        logger.info('Finished flushing pending message')
+    except KafkaError:
+        logger.warning('Failed to flush pending message to kafka')
+    finally:
+        try:
+            producer.close()
+            logger.info('Kafka connection closed')
+        except Exception as e:
+            logger.warning('Failed to close kafka connection')
+
 
 if __name__ == '__main__':
     # setup command line arguments
@@ -50,4 +77,14 @@ if __name__ == '__main__':
         bootstrap_servers=kafka_broker,
     )
 
-    fetch_price(producer, symbol)
+    # fetch_price(producer, symbol)
+
+    # set up proper shutdown hook
+    atexit.register(shutdown_hook(producer))
+
+    # schedule to run every sec
+    schedule.every(1).second.do(fetch_price, producer, symbol)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
