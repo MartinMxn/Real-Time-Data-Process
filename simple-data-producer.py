@@ -77,6 +77,7 @@ if __name__ == '__main__':
         bootstrap_servers=kafka_broker,
     )
 
+    # print(getQuotes('AAPL'))
     # fetch_price(producer, symbol)
 
     # set up proper shutdown hook

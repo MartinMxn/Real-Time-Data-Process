@@ -163,3 +163,9 @@ Remove Table
 ## client-server mode
 client is command line, server is docker daemon, registry is to store images  
 
+## Logging
+```
+log make your life goes smoothly
+sometimes, logging is not enough in distributed system
+-> tracing tool
+```
