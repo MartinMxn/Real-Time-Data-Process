@@ -1,6 +1,6 @@
 # need to read from kafka topic,
 # need to write to cassandra table
-# start: with python data-storage.py stock-analyzer 192.168.99.100
+# start: with python data-storage.py stock-analyzer 192.168.99.101
 
 import json
 import logging

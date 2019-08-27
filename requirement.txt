@@ -2,3 +2,6 @@ schedule
 kafka-python
 googlefinance
 cassandra-driver
+yfinance
+yahoo_fin
+requests_html

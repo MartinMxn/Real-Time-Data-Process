@@ -13,7 +13,7 @@ docker ps (-a) -> check all container
 docker stop $CONTAINER_ID -> stop a container
 docker rm $CONTAINER_ID -> delete a container
 docker start/restart $CONTAINER_ID
-docker-machine start bigdata
+docker-machine start bigdata # do this when long time no action
 ```
 
 ### Get vm ip
@@ -23,9 +23,9 @@ docker-machine ip bigdata
 
 ## eval $(docker-machine env bigdata)
 ```
+!! Necessary
 每一个新的terminal窗口都需要输入这个命令
 zookeeper kafka都需要先打这个
-!! Necessary
 connect docker client(command line) with server
 ```
 
@@ -49,6 +49,9 @@ app3 = cassandra
 ## Zookeeper
 ```
 docker run -d -p 2181:2181 -p 2888:2888 -p 3888:3888 --name zookeeper confluent/zookeeper
+
+docker run -d -p 2181:2181 -p 2888:2888 -p 3888:3888 confluent/zookeeper (second time)
+
 Download using shell commands (MacOS, Linux, Unix)
 ○ wget http://apache.mirrors.ionfish.org/zookeeper/....  # based on current version
 ○ tar xvf zookeeper-3.4.8.tar.gz
@@ -93,9 +96,13 @@ get /workers true
 ```
 docker run -d -p 9092:9092 -e KAFKA_ADVERTISED_HOST_NAME=`docker-machine ip bigdata` -e KAFKA_ADVERTISED_PORT=9092 --name kafka --link zookeeper:zookeeper confluent/kafka
 
+docker run -d -p 9092:9092 -e KAFKA_ADVERTISED_HOST_NAME=192.168.99.101 -e KAFKA_ADVERTISED_PORT=9092 --name kafka --link zookeeper:zookeeper confluent/kafka
+
+192.168.99.101
+
 Create Kafka Topic
 ./kafka-topics.sh --create --zookeeper `docker-machine ip bigdata` --replication-factor 1 --partitions 1 --topic bigdata
-
+./kafka-topics.sh --create --zookeeper `docker-machine ip bigdata` --replication-factor 1 --partitions 1 --topic stock-analyzer
 check on zookeeper
 ● ./zkCli.sh -server `docker-machine ip bigdata`:2181
 ● ls /
@@ -123,6 +130,8 @@ ls
 For data persist
 ```
 docker run -d -p 7199:7199 -p 9042:9042 -p 9160:9160 -p 7001:7001 --name cassandra cassandra:3.11
+
+docker run -d -p 7199:7199 -p 9042:9042 -p 9160:9160 -p 7001:7001 cassandra:3.11
 
 ./cqlsh `docker-machine ip bigdata` 9042
 

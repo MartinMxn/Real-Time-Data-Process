@@ -2,9 +2,12 @@
 
 # 指定kafka集群和topic发送event
 # 指定一个股票 每秒抓取一次股票信息
+# python simple-data-producer.py AAPL
+
 from kafka import KafkaProducer
 from googlefinance import getQuotes
 from kafka.errors import KafkaError, KafkaTimeoutError
+from yfinance import Ticker
 
 import argparse
 import json
@@ -14,8 +17,8 @@ import schedule  # better than set time
 import atexit  # shut down hook, like runTimeExit in Java and process.exit in Node
 
 # default kafka setting
-topic_name = 'stock-analyzer'
-kafka_broker = '127.0.0.1:9002'
+# topic_name = 'stock-analyzer'
+# kafka_broker = '192.168.99.101:9092'
 
 logger_format = '%(asctime)-15s %(message)s'
 logging.basicConfig(format=logger_format)
@@ -34,9 +37,16 @@ def fetch_price(producer, symbol):
     """
     logger.debug('Start to fetch stock price for %s', symbol)
     try:
-        price = json.dumps(getQuotes(symbol))  # to py dict
-        logger.debug('Get stock info %s', price)
-        producer.send(topic = topic_name, value=price, timestamp_ms=time.time)
+        ticker_info = Ticker(symbol).info
+        price = ticker_info.get('postMarketPrice')
+        last_trade_time = ticker_info.get('postMarketTime')
+
+        payload = ('[{"StockSymbol":"%s","LastTradePrice":%s,"LastTradeDateTime":"%s"}]' % (
+        symbol, price, time.ctime(last_trade_time))).encode('utf-8')
+
+        logger.debug('Retrieved stock info %s', payload)
+
+        producer.send(topic=topic_name, value=payload, timestamp_ms=int(time.time()))
         logger.debug('Sent stock price for %s to kafka', symbol)
     except KafkaTimeoutError as timeout_error:
         logger.warning('Failed to send stock price for %s to kafka, cauase by %s',(symbol, timeout_error))
@@ -62,7 +72,6 @@ def shutdown_hook(producer):
 if __name__ == '__main__':
     # setup command line arguments
     parser = argparse.ArgumentParser()
-    # 传参示例 symbol=1 topic_name=2 kafka_broker=3
     parser.add_argument('symbol', help='symbol of the stock') # stock symbol
     parser.add_argument('topic_name', help="the kafka topic")
     parser.add_argument('kafka_broker', help='the location of kafka broker')
@@ -77,11 +86,19 @@ if __name__ == '__main__':
         bootstrap_servers=kafka_broker,
     )
 
-    # print(getQuotes('AAPL'))
-    # fetch_price(producer, symbol)
+    # test part
+    # def test_fetch(symbol):
+    #     print(time.ctime(Ticker('AAPL').info.get('postMarketTime')))
+    #     print(Ticker('AAPL').info.get('postMarketPrice'))
+    #
+    # schedule.every(1).second.do(test_fetch, 'AAPL')
+    #
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(1)
 
     # set up proper shutdown hook
-    atexit.register(shutdown_hook(producer))
+    atexit.register(shutdown_hook, producer)
 
     # schedule to run every sec
     schedule.every(1).second.do(fetch_price, producer, symbol)
