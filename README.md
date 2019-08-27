@@ -135,8 +135,9 @@ docker run -d -p 7199:7199 -p 9042:9042 -p 9160:9160 -p 7001:7001 cassandra:3.11
 
 ./cqlsh `docker-machine ip bigdata` 9042
 
-Create Keyspace
+Create Keyspace -> like database
 ● ./cqlsh `docker-machine ip bigdata` 9042
+CREATE KEYSPACE -> like table
 ● CREATE KEYSPACE “stock” WITH replication = {'class': 'SimpleStrategy', 'replication_factor':
 1} AND durable_writes = 'true';
 ● USE stock;

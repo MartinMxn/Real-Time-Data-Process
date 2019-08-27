@@ -2,16 +2,16 @@
 
 # 指定kafka集群和topic发送event
 # 指定一个股票 每秒抓取一次股票信息
-# python simple-data-producer.py AAPL
+# python simple-data-producer.py AAPL stock-analyzer 192.168.99.101:9092
 
 from kafka import KafkaProducer
-from googlefinance import getQuotes
 from kafka.errors import KafkaError, KafkaTimeoutError
 from yfinance import Ticker
 
 import argparse
 import json
 import time
+from datetime import datetime
 import logging
 import schedule  # better than set time
 import atexit  # shut down hook, like runTimeExit in Java and process.exit in Node
@@ -38,11 +38,11 @@ def fetch_price(producer, symbol):
     logger.debug('Start to fetch stock price for %s', symbol)
     try:
         ticker_info = Ticker(symbol).info
-        price = ticker_info.get('postMarketPrice')
-        last_trade_time = ticker_info.get('postMarketTime')
-
+        price = ticker_info.get('preMarketPrice')
+        last_trade_time = datetime.utcfromtimestamp(ticker_info.get('preMarketTime')).strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(last_trade_time)
         payload = ('[{"StockSymbol":"%s","LastTradePrice":%s,"LastTradeDateTime":"%s"}]' % (
-        symbol, price, time.ctime(last_trade_time))).encode('utf-8')
+        symbol, price, last_trade_time)).encode('utf-8')
 
         logger.debug('Retrieved stock info %s', payload)
 
@@ -87,9 +87,9 @@ if __name__ == '__main__':
     )
 
     # test part
-    # def test_fetch(symbol):
-    #     print(time.ctime(Ticker('AAPL').info.get('postMarketTime')))
-    #     print(Ticker('AAPL').info.get('postMarketPrice'))
+    # def test_fetch(symbol): # pre midnight-morning/post night
+    #     print(time.ctime(Ticker('AAPL').info.get('preMarketTime')))
+    #     print(Ticker('AAPL').info.get('preMarketPrice'))
     #
     # schedule.every(1).second.do(test_fetch, 'AAPL')
     #

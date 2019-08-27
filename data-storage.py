@@ -1,6 +1,6 @@
 # need to read from kafka topic,
-# need to write to cassandra table
-# start: with python data-storage.py stock-analyzer 192.168.99.101
+# need to write to cassandra cluster/table
+# start with: python data-storage.py stock-analyzer 192.168.99.101:9092 stock stock 192.168.99.101
 
 import json
 import logging
@@ -22,7 +22,7 @@ logger.setLevel(logging.DEBUG)
 topic_name = 'stock-analyzer'
 kafka_broker = '127.0.0.1"9092'
 keyspace = 'stock'
-data_table = ''
+data_table = 'stock'
 cassandra_broker = '127.0.0.1:9042'
 
 
@@ -37,7 +37,10 @@ def persist_data(stock_data, cassandra_session):
     symbol = parsed.get('StockSymbol')
     price = float(parsed.get('LastTradePrice'))
     tradetime = parsed.get('LastTradeDateTime')
-    statement = "INSERT INTO %s (stock_symbol, trade_time, trade_price) VALUES ('%s', '%s', '%f')" % (data_able, symbol, tradetime, price)
+    print(str(symbol), price, str(tradetime))
+    # the %f here doesn't have ''
+    statement = 'INSERT INTO %s (stock_symbol, trade_time, trade_price) VALUES (\'%s\', \'%s\', %f)' % (data_table, symbol, tradetime, price)
+    print(statement)
     cassandra_session.execute(statement)
     logger.info('Persisted data into cassandra for symbol: %s, price %f, tradetime %s' % (symbol, price, tradetime))
 
@@ -64,11 +67,11 @@ if __name__ == '__main__':
     topic_name = args.topic_name
     kafka_broker = args.kafka_broker
     keyspace = args.keyspace
-    data_able = args.data_able
+    data_table = args.data_able
     cassandra_broker = args.cassandra_broker
 
     # setup a kafka consumer
-    consumer = KafkaConsumer(topic_name, boostrap_servers=kafka_broker)
+    consumer = KafkaConsumer(topic_name, bootstrap_servers=kafka_broker)
 
     # setup a cassandra session
     cassandra_cluster = Cluster(contact_points=cassandra_broker.split(','))
